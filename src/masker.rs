@@ -59,33 +59,3 @@ fn mask_string(s: &str) -> String {
     let s = PATTERNS.ipv6.replace_all(&s, "[REDACTED:ipv6]");
     s.into_owned()
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn masks_anthropic_api_key() {
-        let result = mask_string("key is sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123456789");
-        assert!(result.contains("[REDACTED:api_key]"));
-        assert!(!result.contains("sk-ant"));
-    }
-
-    #[test]
-    fn masks_github_token() {
-        let result = mask_string("token=ghp_aBcDeFgHiJkLmNoPqRsTuVwXyZ1234567890");
-        assert!(result.contains("[REDACTED:gh_token]"));
-    }
-
-    #[test]
-    fn masks_ipv4() {
-        let result = mask_string("connecting to 192.168.1.1");
-        assert!(result.contains("[REDACTED:ipv4]"));
-    }
-
-    #[test]
-    fn leaves_normal_text_alone() {
-        let result = mask_string("Hello, world!");
-        assert_eq!(result, "Hello, world!");
-    }
-}

@@ -7,7 +7,7 @@ use serde_json::Value;
 use tokio::sync::broadcast;
 
 use crate::masker;
-use crate::storage::{Event, FileAccess, StorageHandle};
+use crate::storage::{Event, FileAccess, StorageHandle, UserPrompt};
 
 #[derive(Clone)]
 struct AppState {
@@ -30,8 +30,7 @@ pub async fn serve(tx: Arc<broadcast::Sender<Value>>, db: Arc<StorageHandle>) ->
 async fn handle_hook(
     State(state): State<AppState>,
     Json(mut payload): Json<Value>,
-) -> StatusCode {
-    masker::mask(&mut payload);
+) -> (StatusCode, Json<Value>) {
 
     let ts = Utc::now().timestamp_millis();
     let session_id = payload
@@ -45,6 +44,37 @@ async fn handle_hook(
         .and_then(|v| v.as_str())
         .unwrap_or("unknown")
         .to_string();
+
+    if event_type == "UserPromptSubmit" {
+        println!("Payload{}", payload);
+        let original = payload
+            .get("prompt")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+        let masked = payload
+            .get("prompt")
+            .and_then(|v| v.as_str())
+            .map(|s| {
+                let mut tmp = serde_json::Value::String(s.to_string());
+                masker::mask(&mut tmp);
+                tmp.as_str().unwrap_or(s).to_string()
+            })
+            .unwrap_or_default();
+
+        if !original.is_empty() {
+            let up = UserPrompt { session_id: session_id.clone(), prompt: masked.clone(), ts };
+            state.db.write_user_prompt(up).await;
+        }
+
+        if masked != original {
+            let reason = format!("Sensitive data detected and blocked. Redacted prompt: {masked}");
+            return (
+                StatusCode::FORBIDDEN,
+                Json(serde_json::json!({ "decision": "block", "reason": reason })),
+            );
+        }
+    }
 
     if event_type == "PreToolUse" || event_type == "PostToolUse" {
         if let Some(tool_name) = payload.get("tool_name").and_then(|v| v.as_str()) {
@@ -79,5 +109,5 @@ async fn handle_hook(
 
     let _ = state.tx.send(payload);
 
-    StatusCode::OK
+    (StatusCode::OK, Json(serde_json::json!({})))
 }

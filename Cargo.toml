@@ -33,6 +33,7 @@ uuid = { version = "1", features = ["v4"] }
 [target.'cfg(not(target_os = "linux"))'.dependencies]
 tray-icon = "0.14"
 winit = "0.30"
+resvg = "0.44"
 
 [profile.release]
 opt-level = 3

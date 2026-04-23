@@ -2,6 +2,7 @@
 mod imp {
     use anyhow::Result;
     use tokio::runtime::Runtime;
+    use resvg::{tiny_skia, usvg};
     use tray_icon::{
         menu::{Menu, MenuEvent, MenuItem},
         TrayIcon, TrayIconBuilder, TrayIconEvent,
@@ -34,9 +35,17 @@ mod imp {
             let _ = menu.append(&open_item);
             let _ = menu.append(&exit_item);
 
-            // 1×1 transparent icon — replace with a real asset later.
-            let icon = tray_icon::Icon::from_rgba(vec![0u8, 0u8, 0u8, 0u8], 1, 1)
-                .expect("failed to create tray icon");
+            let icon = {
+                const BYTES: &[u8] = include_bytes!("../../assets/tray_icon.svg");
+                let tree = usvg::Tree::from_data(BYTES, &Default::default())
+                    .expect("failed to parse tray_icon.svg");
+                let size = tree.size().to_int_size();
+                let (w, h) = (size.width(), size.height());
+                let mut pixmap = tiny_skia::Pixmap::new(w, h).expect("failed to allocate pixmap");
+                resvg::render(&tree, tiny_skia::Transform::default(), &mut pixmap.as_mut());
+                tray_icon::Icon::from_rgba(pixmap.take(), w, h)
+                    .expect("failed to create tray icon")
+            };
 
             self.tray = TrayIconBuilder::new()
                 .with_menu(Box::new(menu))

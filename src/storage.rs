@@ -21,9 +21,17 @@ pub struct FileAccess {
     pub ts: i64,
 }
 
+#[derive(Debug, Clone)]
+pub struct UserPrompt {
+    pub session_id: String,
+    pub prompt: String,
+    pub ts: i64,
+}
+
 pub enum WriteCmd {
     Event(Event),
     FileAccess(FileAccess),
+    UserPrompt(UserPrompt),
 }
 
 #[derive(Clone)]
@@ -50,6 +58,24 @@ impl StorageHandle {
 
     pub async fn write_file_access(&self, fa: FileAccess) {
         let _ = self.tx.send(WriteCmd::FileAccess(fa)).await;
+    }
+
+    pub async fn write_user_prompt(&self, up: UserPrompt) {
+        let _ = self.tx.send(WriteCmd::UserPrompt(up)).await;
+    }
+
+    pub fn query_user_prompts(&self, session_id: &str, limit: usize) -> Result<Vec<Value>> {
+        let conn = open_conn(&self.db_path)?;
+        let mut stmt = conn.prepare(
+            "SELECT prompt, ts FROM user_prompts WHERE session_id = ?1 ORDER BY ts DESC LIMIT ?2",
+        )?;
+        let rows = stmt.query_map(params![session_id, limit as i64], |row| {
+            Ok(serde_json::json!({
+                "prompt": row.get::<_, String>(0)?,
+                "ts": row.get::<_, i64>(1)?,
+            }))
+        })?;
+        rows.map(|r| r.map_err(Into::into)).collect()
     }
 
 
@@ -130,7 +156,14 @@ fn migrate(conn: &Connection) -> Result<()> {
             operation TEXT NOT NULL,
             ts INTEGER NOT NULL
         );
-        CREATE INDEX IF NOT EXISTS fa_session ON file_accesses(session_id, ts);",
+        CREATE INDEX IF NOT EXISTS fa_session ON file_accesses(session_id, ts);
+        CREATE TABLE IF NOT EXISTS user_prompts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id TEXT NOT NULL,
+            prompt TEXT NOT NULL,
+            ts INTEGER NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS up_session ON user_prompts(session_id, ts);",
     )?;
     Ok(())
 }
@@ -197,6 +230,12 @@ fn flush_inner(conn: &Connection, buf: &[WriteCmd]) -> Result<()> {
                 conn.execute(
                     "INSERT INTO file_accesses(session_id, path, operation, ts) VALUES(?1,?2,?3,?4)",
                     params![fa.session_id, fa.path, fa.operation, fa.ts],
+                )?;
+            }
+            WriteCmd::UserPrompt(up) => {
+                conn.execute(
+                    "INSERT INTO user_prompts(session_id, prompt, ts) VALUES(?1,?2,?3)",
+                    params![up.session_id, up.prompt, up.ts],
                 )?;
             }
         }
