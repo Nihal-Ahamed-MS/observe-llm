@@ -1,16 +1,16 @@
 class ClaudeGuardian < Formula
   desc "Local observer daemon that intercepts Claude Code hooks and masks PII"
   homepage "https://github.com/Nihal-Ahamed-MS/claude-guardian"
-  version "0.1.0"
+  version "0.1.2"
   license "MIT"
 
   on_macos do
     if Hardware::CPU.arm?
-      url "https://github.com/Nihal-Ahamed-MS/claude-guardian/releases/download/v#{version}/claude-guardian-aarch64-apple-darwin"
-      sha256 "ARM_PLACEHOLDER"
+      url "https://github.com/Nihal-Ahamed-MS/claude-guardian/releases/download/v0.1.2/claude-guardian-aarch64-apple-darwin"
+      sha256 "3b15608658739ba99917d1514a1dabcf0f80b85759acaa6389aa91d02526ae58"
     else
-      url "https://github.com/Nihal-Ahamed-MS/claude-guardian/releases/download/v#{version}/claude-guardian-x86_64-apple-darwin"
-      sha256 "X86_PLACEHOLDER"
+      url "https://github.com/Nihal-Ahamed-MS/claude-guardian/releases/download/v0.1.2/claude-guardian-x86_64-apple-darwin"
+      sha256 "c24d1dc538ebab8f046ad20f91df263c20280ec036468898d5bcab7f8dc70d87"
     end
   end
 
