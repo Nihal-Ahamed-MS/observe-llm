@@ -13,7 +13,7 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use storage::StorageHandle;
 
 #[derive(Parser)]
-#[command(name = "llm-observer", version, about = "Local observer daemon for Claude Code hooks")]
+#[command(name = "claude-guardian", version, about = "Local observer daemon for Claude Code hooks")]
 struct Cli {
     #[command(subcommand)]
     command: Command,
@@ -33,11 +33,22 @@ fn main() -> Result<()> {
     match cli.command {
         Command::Start => {
             system::boot::install()?;
-            println!("llm-observer installed and started. Run `llm-observer logs` to view.");
+            let binary = std::env::current_exe()?;
+            let log = std::fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open("/tmp/claude-guardian.log")?;
+            std::process::Command::new(binary)
+                .arg("run")
+                .stdin(std::process::Stdio::null())
+                .stdout(log.try_clone()?)
+                .stderr(log)
+                .spawn()?;
+            println!("claude-guardian started. Logs: /tmp/claude-guardian.log");
         }
         Command::Stop => {
             system::boot::uninstall()?;
-            println!("llm-observer stopped and removed from boot.");
+            println!("claude-guardian stopped and removed from boot.");
         }
         Command::Logs => {
             open::that("http://localhost:7422")?;
@@ -65,7 +76,7 @@ fn run_daemon() -> Result<()> {
     let tx = Arc::new(tx);
 
     // Storage
-    let db = rt.block_on(async { StorageHandle::open("llm-observer.db") })?;
+    let db = rt.block_on(async { StorageHandle::open("claude-guardian.db") })?;
     let db = Arc::new(db);
 
     // Hook Server

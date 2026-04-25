@@ -135,7 +135,7 @@ fn platform_install(binary: &std::path::Path) -> Result<()> {
             <plist version="1.0">
             <dict>
                 <key>Label</key>
-                <string>com.llm-observer.daemon</string>
+                <string>com.claude-guardian.daemon</string>
                 <key>ProgramArguments</key>
                 <array>
                     <string>{binary}</string>
@@ -146,9 +146,9 @@ fn platform_install(binary: &std::path::Path) -> Result<()> {
                 <key>KeepAlive</key>
                 <true/>
                 <key>StandardOutPath</key>
-                <string>/tmp/llm-observer.log</string>
+                <string>/tmp/claude-guardian.log</string>
                 <key>StandardErrorPath</key>
-                <string>/tmp/llm-observer.log</string>
+                <string>/tmp/claude-guardian.log</string>
             </dict>
             </plist>
             "#,
@@ -186,5 +186,18 @@ fn platform_uninstall() -> Result<()> {
 fn launchd_plist_path() -> Result<PathBuf> {
     let home = std::env::var("HOME").context("HOME not set")?;
     Ok(PathBuf::from(home)
-        .join("Library/LaunchAgents/com.llm-observer.daemon.plist"))
+        .join("Library/LaunchAgents/com.claude-guardian.daemon.plist"))
+}
+
+// ─── Linux ───────────────────────────────────────────────────────────────────
+
+#[cfg(target_os = "linux")]
+fn platform_install(_binary: &std::path::Path) -> Result<()> {
+    println!("Auto-start is not supported on Linux. Run `claude-guardian run` manually.");
+    Ok(())
+}
+
+#[cfg(target_os = "linux")]
+fn platform_uninstall() -> Result<()> {
+    Ok(())
 }

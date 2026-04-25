@@ -49,7 +49,7 @@ mod imp {
 
             self.tray = TrayIconBuilder::new()
                 .with_menu(Box::new(menu))
-                .with_tooltip("llm-observer")
+                .with_tooltip("claude-guardian")
                 .with_icon(icon)
                 .build()
                 .ok();
@@ -97,4 +97,14 @@ mod imp {
     }
 }
 
+#[cfg(not(target_os = "linux"))]
 pub use imp::run_event_loop;
+
+#[cfg(target_os = "linux")]
+pub fn run_event_loop(rt: tokio::runtime::Runtime) -> anyhow::Result<()> {
+    // No system tray on Linux — just keep the runtime alive until Ctrl-C.
+    rt.block_on(async {
+        tokio::signal::ctrl_c().await.ok();
+    });
+    Ok(())
+}

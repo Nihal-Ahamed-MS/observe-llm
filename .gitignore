@@ -8,7 +8,7 @@ Cargo.lock
 *.db-wal
 
 # Logs
-/tmp/llm-observer.log
+/tmp/claude-guardian.log
 *.log
 
 # Node / UI

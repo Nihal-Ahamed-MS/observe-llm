@@ -46,21 +46,19 @@ async fn handle_hook(
         .to_string();
 
     if event_type == "UserPromptSubmit" {
-        println!("Payload{}", payload);
         let original = payload
             .get("prompt")
             .and_then(|v| v.as_str())
             .unwrap_or("")
             .to_string();
+
+        masker::mask(&mut payload);
+
         let masked = payload
             .get("prompt")
             .and_then(|v| v.as_str())
-            .map(|s| {
-                let mut tmp = serde_json::Value::String(s.to_string());
-                masker::mask(&mut tmp);
-                tmp.as_str().unwrap_or(s).to_string()
-            })
-            .unwrap_or_default();
+            .unwrap_or("")
+            .to_string();
 
         if !original.is_empty() {
             let up = UserPrompt { session_id: session_id.clone(), prompt: masked.clone(), ts };
@@ -74,9 +72,40 @@ async fn handle_hook(
                 Json(serde_json::json!({ "decision": "block", "reason": reason })),
             );
         }
+    } else {
+        masker::mask(&mut payload);
     }
 
-    if event_type == "PreToolUse" || event_type == "PostToolUse" {
+    let mut response_body = serde_json::json!({});
+
+    if event_type == "PreToolUse" {
+        let tool_name = payload.get("tool_name").and_then(|v| v.as_str()).unwrap_or("").to_string();
+
+        // Log file access for file-touching tools.
+        if matches!(tool_name.as_str(), "Read" | "Write" | "Edit" | "Bash") {
+            let path = payload
+                .pointer("/tool_input/file_path")
+                .or_else(|| payload.pointer("/tool_input/path"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+
+            if !path.is_empty() {
+                let fa = FileAccess {
+                    session_id: session_id.clone(),
+                    path,
+                    operation: tool_name.clone(),
+                    ts,
+                };
+                state.db.write_file_access(fa).await;
+            }
+        }
+
+        if let Some(tool_input) = payload.get("tool_input").cloned() {
+            response_body = serde_json::json!({ "tool_input": tool_input });
+            tracing::info!("output of tool {}", response_body);
+        }
+    } else if event_type == "PostToolUse" {
         if let Some(tool_name) = payload.get("tool_name").and_then(|v| v.as_str()) {
             if matches!(tool_name, "Read" | "Write" | "Edit" | "Bash") {
                 let path = payload
@@ -109,5 +138,5 @@ async fn handle_hook(
 
     let _ = state.tx.send(payload);
 
-    (StatusCode::OK, Json(serde_json::json!({})))
+    (StatusCode::OK, Json(response_body))
 }

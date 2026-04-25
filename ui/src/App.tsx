@@ -101,7 +101,7 @@ export default function App() {
       <div style={styles.main}>
         <header style={styles.header}>
           <span style={styles.dot} />
-          <span style={styles.title}>llm-observer</span>
+          <span style={styles.title}>claude-guardian</span>
         </header>
         <EventFeed sessionId={selectedId} liveEvents={liveEvents} />
       </div>

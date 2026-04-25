@@ -57,6 +57,7 @@ pub async fn serve(tx: Arc<broadcast::Sender<Value>>, db: Arc<StorageHandle>) ->
         .route("/api/sessions", get(sessions_handler))
         .route("/api/sessions/{session_id}/events", get(events_handler))
         .route("/api/sessions/{session_id}/files", get(files_handler))
+        .route("/api/sessions/{session_id}/prompts", get(super::handlers::prompts_handler))
         .route("/events", get(sse_handler))
         .fallback(get(static_handler))
         .with_state(state)

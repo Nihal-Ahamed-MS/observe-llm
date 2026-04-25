@@ -1,12 +1,12 @@
 [package]
-name = "llm-observer"
+name = "claude-guardian"
 version = "0.1.0"
 edition = "2021"
 description = "Local observer daemon for Claude Code hooks"
 license = "MIT"
 
 [[bin]]
-name = "llm-observer"
+name = "claude-guardian"
 path = "src/main.rs"
 
 [dependencies]

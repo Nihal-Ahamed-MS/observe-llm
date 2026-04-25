@@ -15,6 +15,26 @@ use tokio_stream::StreamExt as _;
 
 use super::server::{AppState, LimitQuery, mime_for, UI_DIR};
 
+pub async fn prompts_handler(
+    State(state): State<AppState>,
+    Path(session_id): Path<String>,
+    Query(q): Query<LimitQuery>,
+) -> impl IntoResponse {
+    let db = state.db.clone();
+    let limit = q.limit;
+    match tokio::task::spawn_blocking(move || db.query_user_prompts(&session_id, limit)).await {
+        Ok(Ok(rows)) => Json(rows).into_response(),
+        Ok(Err(e)) => {
+            tracing::error!("prompts query: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
+        Err(e) => {
+            tracing::error!("spawn_blocking panic: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
+    }
+}
+
 pub async fn sessions_handler(
     State(state): State<AppState>,
     Query(q): Query<LimitQuery>,
