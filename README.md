@@ -53,5 +53,4 @@ claude-guardian logs    # open monitoring UI at http://localhost:7422
 | 7422 | Web monitoring UI |
 
 ## License
-
 MIT
